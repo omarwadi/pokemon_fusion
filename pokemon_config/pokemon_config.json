@@ -1,0 +1,13 @@
+[
+  {
+    "api_key": "sk-18f15fe7944c47fdaf38614a94403a90",
+    "api_base": "https://pokemongpt.openai.azure.com/",
+    "api_type": "azure",
+    "api_version": "2023-05-15",
+    "deployment_name": "pokemonGPT"
+
+
+
+  }
+]
+

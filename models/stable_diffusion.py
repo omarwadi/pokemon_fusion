@@ -25,7 +25,7 @@ stability_api = client.StabilityInference(
     # Check out the following link for a list of available engines: https://platform.stability.ai/docs/features/api-parameters#engine
 )
 
-async def generate (prompt):
+async def generate_pokemon(prompt):
 # Set up our initial generation parameters.
     answers = stability_api.generate(
         prompt=prompt,

@@ -1,24 +1,19 @@
-
-import os
-import requests
 import openai
-from langchain.llms import AzureOpenAI
-from langchain.prompts import PromptTemplate
 from langchain.prompts import ChatPromptTemplate
 
 openai.api_key = "18f15fe7944c47fdaf38614a94403a90"
 openai.api_base = "https://pokemongpt.openai.azure.com/"
 openai.api_type = 'azure'
 openai.api_version = '2023-05-15'
-deployment_name='pokemonGPT'
+deployment_name = 'pokemonGPT'
 
-pokemon_description = """
-I want a legendary pokemon and want it to be a flying and normal type"""
-similar_pokemons = "Pidgey pokemon and Spearow pokemon"
+pokemon_description = "i want"
+similar_pokemons = "Articuno pokemon and Talonflame pokemon"
+
 description_template = """\
 You should help the user by generating a description about a new pokemon.
-The user must at least give you one type for the pokemon and its optional for the user to describe the pokemon, like
-saying its strong, tanky, glass cannon, and quick.
+The user must at least give you one type for the pokemon, the word "type" isn't considered one of the types, and its
+optional for the user to describe the pokemon, like saying its strong, tanky, glass cannon, and quick.
 the user also can decide if its a legendary pokemon or not.
 The user wont provide you any pokemon names, you will receive them else where and be stored in "similar_to" and its not 
 considered a user input but you will use it 
@@ -51,7 +46,8 @@ some cases where you must not give the user description:
     if you couldn't find the types or the user provided you with more than 2 types then tell the user
     "Please give me at least one type and at most two types".
     
-    if you couldn't find the types or the user only provided you with One or more than Three pokemons, then tell the user 
+    if you couldn't find the types or the user only provided you with One or more than Three pokemons, then tell the 
+    user: 
     "Please give me at most Two pokemons or dont specify and specify at least One type and at most Two types"
     
     If the user ask you a question that is irrelevant then dont answer and say 
@@ -94,7 +90,7 @@ Description: an introduction about the pokemon and what can it do with some triv
 and when, main role in the team, other Pokemons that work very well with it and complete each others.
         
 
-
+****
 input: {input}
 
 \\\
@@ -103,16 +99,11 @@ similar_to:{similar_to}
 \\\
 """
 
-prompt_template = ChatPromptTemplate.from_template(description_template)
-print(prompt_template)
-messages = prompt_template.format_messages(input=pokemon_description, similar_to=similar_pokemons)
 
-"""
-chat = AzureOpenAI(temperature=0.0, model="gpt-4-32k", engine=deployment_name)
-response = chat(messages)
-print(response.content)
-"""
-def get_completion(prompt, model="gpt-4-32k", engine=deployment_name):
+def generate_pokemon_description(prompt, model="gpt-4-32k", engine=deployment_name):
+    prompt_template = ChatPromptTemplate.from_template(description_template)
+    prompt = str(prompt_template.format_messages(input=prompt, similar_to=similar_pokemons))
+
     messages = [{"role": "user", "content": prompt}]
     response = openai.ChatCompletion.create(
         model=model,
@@ -121,5 +112,3 @@ def get_completion(prompt, model="gpt-4-32k", engine=deployment_name):
         engine=engine
     )
     return response.choices[0].message["content"]
-
-print(get_completion(str(messages)))
