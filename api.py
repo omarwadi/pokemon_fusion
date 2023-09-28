@@ -1,5 +1,4 @@
-from fastapi import FastAPI
-from fastapi import Request, Form
+from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 
 from models.llm import *
@@ -9,7 +8,7 @@ templates = Jinja2Templates(directory='test_templates')
 
 
 @app.get('/')
-def generate_page(request: Request):
+async def generate_page(request: Request):
     return templates.TemplateResponse(
         'generate_form.html',
         {'request': request})
@@ -22,7 +21,7 @@ async def generate_image(pokemon_1: str, pokemon_2: str | None = None):
 
 
 @app.post("/generate_description/")
-def generate_description(*, prompt: str = Form(...), request: Request):
+async def generate_description(*, prompt: str = Form(...), request: Request):
     response = generate_pokemon_description(prompt)
     return templates.TemplateResponse('show_description.html',
                                       {'request': request, 'prompt': prompt, 'response': response})

@@ -16,7 +16,7 @@ os.environ['STABILITY_HOST'] = 'grpc.stability.ai:443'
 
 # Paste your API Key below.
 
-os.environ['STABILITY_KEY'] = 'sk-7LMs4hqrv2epBdSffUk9uwkP7peLCuEdq5hpdqE0Fy8RQwjB'
+os.environ['STABILITY_KEY'] = 'sk-qBJkSayyzxc57PMeysbKSWmlxWESZaAmzum0MzX4VpRGmZFi'
 
 stability_api = client.StabilityInference(
     key=os.environ['STABILITY_KEY'], # API Key reference.
