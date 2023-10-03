@@ -9,8 +9,8 @@ openai.api_type = 'azure'
 openai.api_version = '2023-05-15'
 deployment_name = 'pokemonGPT'
 
-pokemon_description = "i want"
-similar_pokemons = "Darkrai pokemon and Gengar pokemon"
+pokemon_description = "i want a pokemon cxsfksdab n"
+similar_pokemons = "Entei pokemon and Kyurem pokemon"
 
 description_template = """\
 You should help the user by generating a description about a new pokemon.
@@ -128,4 +128,3 @@ async def generate_pokemon_description(prompt, model="gpt-4-32k", engine=deploym
         engine=engine
     )
     return response.choices[0].message["content"]
-
