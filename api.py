@@ -30,5 +30,6 @@ async def generate_image(pokemon_1: str, pokemon_2: str | None = None):
 
 @app.post("/generate_description/")
 async def generate_description(*, prompt: str = Form(...), request: Request):
+    """This gene"""
     response = await generate_pokemon_description(prompt)
-    return print(response)
+    return response

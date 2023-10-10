@@ -1,18 +1,48 @@
 import openai
+import langchain
+from langchain import LLMChain
 from langchain.prompts import ChatPromptTemplate
-
+from langchain.output_parsers import ResponseSchema
+from langchain.output_parsers import StructuredOutputParser
+from langchain.chat_models import AzureChatOpenAI
+from typing import Optional, Literal
 from models.stable_diffusion import generate_pokemon
 
-openai.api_key = "18f15fe7944c47fdaf38614a94403a90"
-openai.api_base = "https://pokemongpt.openai.azure.com/"
-openai.api_type = 'azure'
-openai.api_version = '2023-05-15'
-deployment_name = 'pokemonGPT'
+# openai.api_key = "18f15fe7944c47fdaf38614a94403a90"
+# openai.api_base = "https://pokemongpt.openai.azure.com/"
+# openai.api_type = "azure"
+# openai.api_version = "2023-05-15"
 
-pokemon_description = "i want a pokemon cxsfksdab n"
+GPT_4 = "gpt-4"
+GPT_4_32K = "gpt-4-32k"
+MODEL_NAMES = Literal["gpt-4", "gpt-4-32k"]
+
+
+LLM_MODEL_PARAMS = {
+    GPT_4: {
+        "deployment_name": "test",
+        "model_name": GPT_4,
+    },
+}
+
+AZ_LLM_PARAMS = {
+    "openai_api_type": "azure",
+    "openai_api_version": "2023-05-15",
+    "temperature": 0,
+    "openai_api_base": "https://pokemonGPT.openai.azure.com/",
+    "openai_api_key": "5d482a5723e742b69da51b233bee4240",
+}
+
+
 similar_pokemons = "Entei pokemon and Kyurem pokemon"
+deployment_name = "test"
 
-description_template = """\
+DESCRIPTION_TEMPLATE = """
+
+###Rules:
+- For uncertainty, use "None".
+- Avoid Mistakes.
+
 You should help the user by generating a description about a new pokemon.
 The user must at least give you one type for the pokemon, the word "type" isn't considered one of the types, and its
 optional for the user to describe the pokemon, like saying its strong, tanky, glass cannon, and quick.
@@ -57,74 +87,221 @@ some cases where you must not give the user description:
         - At least one type and two types at most
     to generate for you a new Pokemon"  
 
-Based on user's input,generate the following information:
+Based on user's input, generate.
 
-Name of the pokemon: come up with a name that's both creative and suits the info the user gave you. 
-origin name: Whats the name origin, or where it came from?
-Category: like charmander it's known as the lizard pokemon or bulbasaur known as the seed pokemon
-Type: the type or types that the user provided
-Base stats: for each state for the pokemon give it a value, you should distribute the stats based on the info the user 
-gave you, and pay attention if it's a legendary pokemon or not,return the stats like this:
-    HP:
-    Attack:
-    Defence:
-    Sp.Atk:
-    Sp.Def
-    Speed:
-    Total: (Sum up all the above states together)
-Height: based on the 2 pokemons (If the 2 pokemons were given)
-Weight: also based on the 2 pokemons (If the 2 pokemons were given)
-Gender: give a percentage, and if its a legendary it should be unknown, unless the user decides
-Leveling rate: based on the 2 pokemons (If the 2 pokemons were given)
-Catch rate: based if its a legendary or not give it a value
-Location: where it could be found
-Base friendship: based on the 2 pokemons (If the 2 pokemons were given)
-Egg group: based on the 2 pokemons (If the 2 pokemons were given)
-Abilities: The abilities are based on the types the user gave you and explain each abilities and similar pokemons that 
-have it
-hidden Ability: some pokemon have hidden ability and some not, you decide, it could be random from but choose an ability 
-that goes along with the type, nd explain each abilities and similar pokemons that have it
-Weak to: Types that the pokemon is weak against (based on the type or types the user give you)
-Immune to: Types that have 0 effect on the pokemon (based on the type or types the user give you)
-Resistant to: Types that are weak against the pokemon (based on the type or types the user give you)
-base moves set: give it 4 base moves 
-moves set: all the moves it could learn and when like this:
-    level 10: move 1
-    level 18: move 2
-        .
-        .
-        .
-give it moves set up to level 70.
-Special move: ***THIS IS ONLY FOR LEGENDARY POKEMONS*** if the pokemon was legendary give it a special move that suits
-it's type that identifies it and make it stand out compared to other pokemons, and when does it learn the move, 
-also give values for the following:
-    Description: describe what the move do
-    PP:	How many times it could be used before running out of uses 
-    Power: its power, it could exceeds 100
-    Accuracy: the chance for it to hit, in percentage
-Description: an introduction about the pokemon and what can it do with some trivia and fun fact, where it's best used 
-and when, main role in the team, other Pokemons that work very well with it and complete each others.
-        
-
-****
-input: {input}
-
-\\\
-this part comes else where not from the user so use it
-similar_to:{similar_to}
-\\\
+user input:
+prompt, similar_pokemons
 """
 
 
-async def generate_pokemon_description(prompt, model="gpt-4-32k", engine=deployment_name):
-    prompt_template = ChatPromptTemplate.from_template(description_template)
-    prompt = str(prompt_template.format_messages(input=prompt, similar_to=similar_pokemons))
+async def generate_pokemon_description(prompt: str):
+    prompt_template, output_parser = get_prompt()
 
-    messages = [{"role": "user", "content": prompt}]
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages,
-        temperature=0.0,
-        engine=engine
+    response = completion(
+        model_name=GPT_4,
+        prompt=prompt_template,
+        input_dict={"prompt": prompt, "similar_pokemons": similar_pokemons},
     )
-    return response.choices[0].message["content"]
+    try:
+        response_text_json = output_parser.parse(response["text"])
+    except Exception as e:
+        raise e
+
+    if response_text_json:
+        #print(response_text_json)
+        print(type(response_text_json))
+        return response_text_json
+    else:
+        return None
+
+
+def get_prompt():
+    name_schema = ResponseSchema(
+        name="name", description="Whats the name of the pokemon?"
+    )
+
+    origin_schema = ResponseSchema(
+        name="name_origin", description="Where the name came from? Origin of the name?"
+    )
+    category_schema = ResponseSchema(
+        name="category",
+        description="Whats the pokemon category?\
+                                    like charmander it's known as the lizard pokemon or\
+                                    bulbasaur known as the seed pokemon",
+    )
+    hp_schema = ResponseSchema(name="HP", description="Whats the pokemon's HP?")
+    atk_schema = ResponseSchema(
+        name="attack", description="Whats the pokemon's attack?"
+    )
+    def_schema = ResponseSchema(
+        name="defence", description="Whats the pokemon's Defence?"
+    )
+    sp_atk_schema = ResponseSchema(
+        name="special_attack", description="Whats the pokemon's Special attack?"
+    )
+    sp_def_schema = ResponseSchema(
+        name="special_defence", description="Whats the pokemon's Special Defence?"
+    )
+    spd_schema = ResponseSchema(name="Speed", description="Whats the pokemon's Speed?")
+    totalstats_schema = ResponseSchema(
+        name="total_stats", description="Whats the sum of all the previous stats?"
+    )
+    height_schema = ResponseSchema(
+        name="height",
+        description="Whats the pokemon's height? based on the 2 pokemons given",
+    )
+    weight_schema = ResponseSchema(
+        name="weight",
+        description="Whats the pokemon's Weight? based on the 2 pokemons given",
+    )
+    gender_schema = ResponseSchema(
+        name="gender",
+        description="Whats the pokemon's Gender?\
+                                    give a percentage, and if its a legendary it should be unknown, unless the user decides ",
+    )
+    levelingrate_schema = ResponseSchema(
+        name="leveling_rate",
+        description="Whats the pokemon's Leveling rate?\
+                                    based on the 2 pokemons given",
+    )
+    catchrate_schema = ResponseSchema(
+        name="catch_rate",
+        description="Whats the pokemon's Catch rate?\
+                                    based if its a legendary or not give it a value",
+    )
+    location_schema = ResponseSchema(
+        name="location",
+        description="Whats the pokemon's Location? where could it be found?",
+    )
+    basefriendship_schema = ResponseSchema(
+        name="base_friendship",
+        description="Whats the pokemon's Base friendship?based on the 2 pokemons given",
+    )
+    egggroup_schema = ResponseSchema(
+        name="egg_group",
+        description="Whats the pokemon's Egg group?based on the 2 pokemons given",
+    )
+    abilities_schema = ResponseSchema(
+        name="abilities",
+        description="What are the pokemon's Abilities? what each ability do exactly? based on the 2 pokemons given",
+    )
+    hiddenabilities_schema = ResponseSchema(
+        name="hidden_ability",
+        description="Whats the pokemon's Hidden Ability?what does the ability do exactly?",
+    )
+    weakto_schema = ResponseSchema(
+        name="weak_to", description="Whats the pokemon's Weak to?"
+    )
+    immuneto_schema = ResponseSchema(
+        name="immune_to",
+        description="Whats the pokemon's Immune to? based on the type or types the user gave you",
+    )
+    resistantto_schema = ResponseSchema(
+        name="resistant_to",
+        description="Whats the pokemon's Resistant to? based on the type or types the user gave you",
+    )
+    basemovesset_schema = ResponseSchema(
+        name="base_moves",
+        description="What are the pokemon's Base Moves? generate them and output\
+                                        them as key:value and in our case its move:move name",
+    )
+    # movesset_schema = ResponseSchema(
+    #     name="moves_set",
+    #     description="What are the pokemon's Base Moves? generate them and output\
+    #                                     them as key:value and in our case its Level that the pokemon needs to reach:move name\
+    #                                     give it moves up to level 80",
+    # )
+    specialmoves_schema = ResponseSchema(
+        name="special_move",
+        description="What's the pokemon's Special Move? ***THIS IS ONLY FOR LEGENDARY POKEMONS***\
+                                        if the pokemon was legendary give it a special move that suits\
+                                        its type that identifies it and make it stand out compared to other pokemons,\
+                                        and when does it learn the move, also give values for the following:\
+                                        Description: describe what the move do\
+                                        PP:	How many times it could be used before running out of uses\
+                                        Power: its power, it could exceeds 100\
+                                        Accuracy: the chance for it to hit, in percentage\
+                                        and output them in a json format",
+    )
+    resistantto_schema = ResponseSchema(
+        name="resistant_to",
+        description="Whats the pokemon's Resistant to? based on the type or types the user gave you",
+    )
+    description_schema = ResponseSchema(
+        name="description",
+        description="Whats the pokemon's description? an introduction about the pokemon and what can\
+                                        it do with some trivia and fun fact, where it's best used\
+                                        and when, main role in the team, other Pokemons that work\
+                                        very well with it and complete each others.",
+    )
+
+    response_schemas = [
+        resistantto_schema,
+        specialmoves_schema,
+        # movesset_schema,
+        basemovesset_schema,
+        resistantto_schema,
+        immuneto_schema,
+        weakto_schema,
+        hiddenabilities_schema,
+        abilities_schema,
+        egggroup_schema,
+        basefriendship_schema,
+        location_schema,
+        catchrate_schema,
+        levelingrate_schema,
+        gender_schema,
+        weight_schema,
+        height_schema,
+        name_schema,
+        origin_schema,
+        category_schema,
+        hp_schema,
+        atk_schema,
+        def_schema,
+        sp_atk_schema,
+        sp_def_schema,
+        spd_schema,
+        totalstats_schema,
+        description_schema,
+    ]
+
+    output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
+    format_instructions = output_parser.get_format_instructions()
+    prompt_template = ChatPromptTemplate.from_template(
+        template=f"{DESCRIPTION_TEMPLATE}."
+        + "\n{format_instructions}\n{similar_pokemons}\n{prompt}",
+        partial_variables={
+            "format_instructions": format_instructions,
+        },
+    )
+
+    return prompt_template, output_parser
+
+
+def get_llm(model_name: MODEL_NAMES):
+    streaming = False
+    model_selection = [GPT_4, GPT_4_32K]
+    if model_name in model_selection:
+        return AzureChatOpenAI(
+            **AZ_LLM_PARAMS,
+            **LLM_MODEL_PARAMS[model_name],
+            streaming=streaming,
+        )
+
+
+def completion(
+    model_name: MODEL_NAMES,
+    prompt: ChatPromptTemplate,
+    input_dict: dict,
+):
+    chain = LLMChain(
+        llm=get_llm(model_name),
+        prompt=prompt,
+    )
+
+    response = chain(
+        input_dict,
+    )
+
+    return response
