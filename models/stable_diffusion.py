@@ -16,7 +16,7 @@ os.environ['STABILITY_HOST'] = 'grpc.stability.ai:443'
 
 # Paste your API Key below.
 
-os.environ['STABILITY_KEY'] = 'sk-qBJkSayyzxc57PMeysbKSWmlxWESZaAmzum0MzX4VpRGmZFi'
+os.environ['STABILITY_KEY'] = 'sk-vu6CxVpujtuFAgayhsed7AqUfwpYQrzl9LccTe6ZrVuzSyqe'
 
 stability_api = client.StabilityInference(
     key=os.environ['STABILITY_KEY'], # API Key reference.
@@ -54,4 +54,5 @@ async def generate_pokemon(prompt):
                     "Please modify the prompt and try again.")
             if artifact.type == generation.ARTIFACT_IMAGE:
                 img = Image.open(io.BytesIO(artifact.binary))
-                img.save(str(artifact.seed)+ ".png") # Save our generated images with their seed number as the filename.
+                image_path = img.save("generated_pokemon.png") # Save our generated images with their seed number as the filename.
+    return image_path
