@@ -17,18 +17,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-@app.get('/')
-async def generate_page():
-    return print('Hello')
-
 
 @app.post('/generate_image/')
-async def generate_image(pokemon_1: str, pokemon_2: str | None = None):
-    re = await generate_pokemon(f"{pokemon_1} with {pokemon_2} pokemon fusion")
-    print('hey')
-
+async def generate_image(request:Request):
+    """
+        An api that calles stable diffusion model to generate the pokemon image
+    """
+    data = await request.json()
+    pokemon1 = data.get("first_pokemon")
+    pokemon2 = data.get("second_pokemon")
+    image = await generate_pokemon(f"{pokemon1} with {pokemon2} pokemon fusion")
+    return image
 
 @app.post("/generate_description/")
-async def generate_description(*, prompt: str = Form(...), request: Request):
+async def generate_description(*, prompt: str = Form(...)):
+    """
+        This calls the LLM(gpt4) to generate the pokemon description 
+    """ 
     response = await generate_pokemon_description(prompt)
-    return print(response)
+    return response

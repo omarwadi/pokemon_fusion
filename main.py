@@ -1,5 +1,6 @@
-import asyncio
+################   JUST FOR TESTING   ################
 
+import asyncio
 from models.llm import generate_pokemon_description
 from models.stable_diffusion import generate_pokemon
 
