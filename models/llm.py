@@ -34,88 +34,74 @@ AZ_LLM_PARAMS = {
 }
 
 
-similar_pokemons = "Entei pokemon and Kyurem pokemon"
+similar_pokemons = "Entei pokemon and Kyurem pokemon" #Its hardcodded for now, will be changed later
 deployment_name = "test"
 
 DESCRIPTION_TEMPLATE = """
 
-###Rules:
-- For uncertainty, use "None".
-- Avoid Mistakes.
+    ###Rules:
+    - For uncertainty, use "None".
+    - Avoid Mistakes.
 
-You should help the user by generating a description about a new pokemon.
-The user must at least give you one type for the pokemon, the word "type" isn't considered one of the types, and its
-optional for the user to describe the pokemon, like saying its strong, tanky, glass cannon, and quick.
-the user also can decide if its a legendary pokemon or not.
-The user wont provide you any pokemon names, you will receive them else where and be stored in "similar_to" and its not 
-considered a user input but you will use it 
-there are 18 types of pokemon and they're: 
-    Normal
-    Fire
-    Water
-    Grass
-    Electric
-    Ice
-    Fighting
-    Poison
-    Ground
-    Flying
-    Psychic
-    Bug
-    Rock
-    Ghost
-    Dragon
-    Dark
-    Steel
-    Fairy
-other than these types it's considered a description and you must at least find one of these types in the user's input.
+    You should help the user by generating a description about a new pokemon.
+    The user must at least give you one type for the pokemon, the word "type" isn't considered one of the types, and its
+    optional for the user to describe the pokemon, like saying its strong, tanky, glass cannon, and quick.
+    the user also can decide if its a legendary pokemon or not.
+    The user wont provide you any pokemon names, you will receive them else where and be stored in "similar_to" and its not 
+    considered a user input but you will use it 
+    there are 18 types of pokemon and they're: 
+        Normal
+        Fire
+        Water
+        Grass
+        Electric
+        Ice
+        Fighting
+        Poison
+        Ground
+        Flying
+        Psychic
+        Bug
+        Rock
+        Ghost
+        Dragon
+        Dark
+        Steel
+        Fairy
+    other than these types it's considered a description and you must at least find one of these types in the user's input.
 
-some cases where you must not give the user description:
-    if the user gives you one or more pokemon names or in general if the user gives you some names dont continue even if 
-    it describes it and tell the user:
-    "Please only provide me with one or two types"
-    
-    if you couldn't find the types or the user provided you with more than 2 types then tell the user
-    "Please give me at least one type and at most two types".
-    
-    if you couldn't find the types or the user only provided you with One or more than Three pokemons, then tell the 
-    user: 
-    "Please give me at most Two pokemons or dont specify and specify at least One type and at most Two types"
-    
-    If the user ask you a question that is irrelevant then dont answer and say 
-    "Im sorry i cant help you with that, Im a pokemon generator so Please provide me with :
-        - At least one type and two types at most
-    to generate for you a new Pokemon"  
+    some cases where you must not give the user description:
+        if the user gives you one or more pokemon names or in general if the user gives you some names dont continue even if 
+        it describes it and tell the user:
+        "Please only provide me with one or two types"
+        
+        if you couldn't find the types or the user provided you with more than 2 types then tell the user
+        "Please give me at least one type and at most two types".
+        
+        if you couldn't find the types or the user only provided you with One or more than Three pokemons, then tell the 
+        user: 
+        "Please give me at most Two pokemons or dont specify and specify at least One type and at most Two types"
+        
+        If the user ask you a question that is irrelevant then dont answer and say 
+        "Im sorry i cant help you with that, Im a pokemon generator so Please provide me with :
+            - At least one type and two types at most
+        to generate for you a new Pokemon"  
 
-Based on user's input, generate.
+    Based on user's input, generate.
 
-user input:
-prompt, similar_pokemons
-"""
+    user input:
+    prompt, similar_pokemons
+    """
 
 
-async def generate_pokemon_description(prompt: str):
-    prompt_template, output_parser = get_prompt()
 
-    response = completion(
-        model_name=GPT_4,
-        prompt=prompt_template,
-        input_dict={"prompt": prompt, "similar_pokemons": similar_pokemons},
-    )
-    try:
-        response_text_json = output_parser.parse(response["text"])
-    except Exception as e:
-        raise e
-
-    if response_text_json:
-        #print(response_text_json)
-        print(type(response_text_json))
-        return response_text_json
-    else:
-        return None
-
+def get_llm(model_name: MODEL_NAMES):
 
 def get_prompt():
+    '''
+        This function takes nothing and it adds the response schema with the description template 
+        so the model outputs the response in a way similir to what we want 
+    '''
     name_schema = ResponseSchema(
         name="name", description="Whats the name of the pokemon?"
     )
@@ -278,8 +264,9 @@ def get_prompt():
 
     return prompt_template, output_parser
 
-
-def get_llm(model_name: MODEL_NAMES):
+    """
+        returns model's information 
+    """
     streaming = False
     model_selection = [GPT_4, GPT_4_32K]
     if model_name in model_selection:
@@ -289,19 +276,37 @@ def get_llm(model_name: MODEL_NAMES):
             streaming=streaming,
         )
 
-
-def completion(
-    model_name: MODEL_NAMES,
-    prompt: ChatPromptTemplate,
-    input_dict: dict,
-):
+def completion(model_name: MODEL_NAMES, prompt: ChatPromptTemplate, input_dict: dict,):
+    """
+        Return the model's response
+    """
     chain = LLMChain(
         llm=get_llm(model_name),
         prompt=prompt,
     )
-
     response = chain(
         input_dict,
     )
 
     return response
+
+async def generate_pokemon_description(prompt: str):
+    """
+        calls the completion function to get the model's response.
+        After that it formats the response so the output becomes a json and returns it. 
+    """
+    prompt_template, output_parser = get_prompt()
+    response = completion(
+        model_name=GPT_4,
+        prompt=prompt_template,
+        input_dict={"prompt": prompt, "similar_pokemons": similar_pokemons},
+    )
+    try:
+        response_text_json = output_parser.parse(response["text"])
+    except Exception as e:
+        raise e
+
+    if response_text_json:
+        return response_text_json
+    else:
+        return None
